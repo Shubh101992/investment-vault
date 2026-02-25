@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Investment Vault">
+<meta name="theme-color" content="#1a1a2e">
+<title>Investment Vault</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#0f3460;color:#1a1a2e;min-height:100vh}
+.screen{display:none;min-height:100vh}
+.screen.active{display:flex;flex-direction:column}
+
+/* ── LOGIN / SETUP SCREENS ── */
+#loginScreen,#setupScreen{background:linear-gradient(160deg,#1a1a2e,#0f3460);align-items:center;justify-content:center;padding:24px;padding-top:max(env(safe-area-inset-top,20px),24px)}
+.auth-card{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:20px;padding:26px 22px;width:100%;max-width:340px}
+.auth-logo{font-size:52px;text-align:center;margin-bottom:10px}
+.auth-title{font-size:24px;font-weight:700;color:white;text-align:center;margin-bottom:4px}
+.auth-sub{font-size:11px;color:rgba(255,255,255,.4);text-align:center;letter-spacing:2px;text-transform:uppercase;margin-bottom:22px}
+.fl{font-size:10px;color:rgba(255,255,255,.5);letter-spacing:1.2px;text-transform:uppercase;display:block;margin-bottom:6px;margin-top:14px}
+.fl:first-of-type{margin-top:0}
+.fi-wrap{position:relative}
+.fi{width:100%;padding:13px 44px 13px 14px;background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.18);border-radius:11px;color:white;font-size:15px;font-family:inherit;outline:none;transition:border-color .2s}
+.fi::placeholder{color:rgba(255,255,255,.3)}
+.fi:focus{border-color:rgba(74,222,128,.6);background:rgba(255,255,255,.11)}
+.fi-eye{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:rgba(255,255,255,.4);font-size:17px;cursor:pointer;padding:4px;line-height:1}
+.pw-bar{height:3px;border-radius:2px;margin-top:5px;transition:all .3s;background:transparent}
+.pw-lbl{font-size:10px;margin-top:3px;height:14px}
+.auth-btn{width:100%;margin-top:18px;padding:14px;background:linear-gradient(135deg,#4ade80,#16a34a);border:none;border-radius:12px;color:#1a1a2e;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity .15s}
+.auth-btn:active{opacity:.85}
+.auth-err{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);border-radius:9px;padding:10px 13px;font-size:13px;color:#fca5a5;margin-top:12px;text-align:center;display:none}
+.auth-err.on{display:block}
+.auth-link{color:rgba(74,222,128,.8);text-align:center;margin-top:16px;cursor:pointer;font-size:13px;text-decoration:underline;display:block}
+.warn-strip{background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.25);border-radius:9px;padding:9px 13px;font-size:11px;color:#fde68a;margin-bottom:14px;line-height:1.6}
+
+/* ── MAIN APP SCREEN ── */
+#appScreen{background:#F2F2F7;flex-direction:column}
+.hdr{background:linear-gradient(160deg,#1a1a2e,#16213e,#0f3460);padding:max(env(safe-area-inset-top,20px),20px) 16px 0;color:white;flex-shrink:0}
+.hdr-top{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:2px}
+.hdr-lbl{font-size:10px;opacity:.45;letter-spacing:2.5px;text-transform:uppercase;margin-bottom:2px}
+.hdr-name{font-size:23px;font-weight:700}
+.hdr-btns{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;margin-top:2px}
+.hb{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);color:white;border-radius:8px;padding:5px 9px;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit}
+.stats-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;padding:12px 0 0}
+.stat{background:rgba(255,255,255,.1);border-radius:11px;padding:9px}
+.stat-l{font-size:8px;opacity:.55;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px}
+.stat-v{font-size:12px;font-weight:700}
+.ret-row{text-align:center;padding:8px 0 4px;font-size:11px;opacity:.75}
+.sync-row{background:rgba(0,0,0,.18);padding:6px 16px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
+.sync-lbl{font-size:10px;color:rgba(255,255,255,.55)}
+.sync-act{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);color:white;border-radius:6px;padding:4px 9px;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit}
+.tabs{background:white;display:flex;border-bottom:1px solid #E5E5EA;position:sticky;top:0;z-index:100;flex-shrink:0}
+.tab{flex:1;padding:11px 2px;border:none;background:none;font-family:inherit;font-size:10px;cursor:pointer;border-bottom:2.5px solid transparent;color:#999;font-weight:500}
+.tab.on{font-weight:700;color:#0f3460;border-bottom-color:#0f3460}
+.body{padding:13px 13px 90px;max-width:480px;margin:0 auto;width:100%;overflow-y:auto;flex:1}
+
+/* ── CARDS ── */
+.cat-card{background:white;border-radius:13px;padding:13px;margin-bottom:9px;box-shadow:0 1px 6px rgba(0,0,0,.06)}
+.inv-card{background:white;border-radius:13px;padding:13px;margin-bottom:9px;box-shadow:0 1px 6px rgba(0,0,0,.06)}
+.inv-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-top:10px}
+.inv-cell{background:#F8F9FA;border-radius:8px;padding:7px 8px}
+.ic-l{font-size:8px;color:#aaa;text-transform:uppercase;letter-spacing:.4px}
+.ic-v{font-size:11px;font-weight:700;margin-top:2px}
+.pills{display:flex;gap:5px;overflow-x:auto;padding-bottom:4px;margin-bottom:10px;scrollbar-width:none}
+.pills::-webkit-scrollbar{display:none}
+.pill{padding:5px 11px;border-radius:16px;border:none;white-space:nowrap;font-family:inherit;font-size:11px;cursor:pointer;font-weight:500}
+.panel{background:white;border-radius:13px;padding:15px;margin-bottom:10px;box-shadow:0 1px 6px rgba(0,0,0,.06)}
+.panel-t{font-size:14px;font-weight:700;margin-bottom:5px}
+.panel-s{font-size:11px;color:#999;margin-bottom:12px;line-height:1.5}
+.exp-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.exp-btn{border-radius:11px;padding:14px 11px;cursor:pointer;text-align:center;background:white;font-family:inherit}
+.exp-ico{font-size:26px;margin-bottom:5px}
+.exp-n{font-size:12px;font-weight:700;margin-bottom:2px}
+.exp-d{font-size:10px;color:#999;line-height:1.3}
+.sec-row{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid #F2F2F7}
+.sec-row:last-child{border-bottom:none}
+.sec-rl{font-size:13px;font-weight:600}
+.sec-rs{font-size:10px;color:#aaa;margin-top:2px}
+.sec-ab{padding:6px 12px;border-radius:8px;border:none;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;background:#EFF6FF;color:#3B82F6}
+.enc-badge{background:#ECFDF5;border:1px solid #a7f3d0;border-radius:10px;padding:10px 13px;font-size:11px;color:#10B981;margin-bottom:11px;line-height:1.5}
+.prog-wrap{height:4px;background:#F2F2F7;border-radius:4px;overflow:hidden;margin-top:8px}
+.prog-bar{height:100%;border-radius:4px;transition:width .5s ease}
+.empty{text-align:center;padding:48px 18px;color:#ccc}
+.empty-ico{font-size:44px;margin-bottom:10px}
+.empty-t{font-size:15px;font-weight:600;color:#888;margin-bottom:5px}
+
+/* ── MODAL ── */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;display:none;align-items:flex-end;justify-content:center}
+.modal-bg.open{display:flex}
+.modal-box{background:white;border-radius:20px 20px 0 0;padding:18px 17px calc(max(env(safe-area-inset-bottom,16px),16px) + 18px);width:100%;max-width:480px;max-height:90vh;overflow-y:auto;animation:slideUp .3s ease}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.modal-handle{width:36px;height:4px;background:#E5E5EA;border-radius:2px;margin:0 auto 16px}
+.modal-t{font-size:16px;font-weight:700;margin-bottom:15px}
+.ml{font-size:10px;color:#666;letter-spacing:1px;text-transform:uppercase;display:block;margin-bottom:5px}
+.mi{width:100%;padding:11px 13px;border:1.5px solid #E5E5EA;border-radius:10px;font-family:inherit;font-size:14px;outline:none;margin-bottom:10px;background:white;transition:border-color .2s}
+.mi:focus{border-color:#0f3460}
+.mi-wrap{position:relative;margin-bottom:10px}
+.mi-wrap .mi{margin-bottom:0}
+.mi-eye{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:#bbb;font-size:16px;cursor:pointer}
+.cat-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px}
+.cat-opt{padding:8px 10px;border-radius:9px;border:2px solid #E5E5EA;background:white;cursor:pointer;font-family:inherit;font-size:11px;font-weight:600;display:flex;align-items:center;gap:6px;transition:all .15s}
+.modal-btns{display:flex;gap:7px;margin-top:14px}
+.m-cancel{flex:1;padding:12px;border:1.5px solid #E5E5EA;border-radius:11px;background:white;font-family:inherit;font-size:14px;cursor:pointer}
+.m-save{flex:2;padding:12px;border:none;border-radius:11px;background:linear-gradient(135deg,#1a1a2e,#0f3460);color:white;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer}
+.modal-err{background:#FEF2F2;border:1px solid #fecaca;border-radius:8px;padding:8px 12px;font-size:12px;color:#ef4444;margin-top:7px;display:none}
+.modal-err.on{display:block}
+.modal-suc{background:#ECFDF5;border:1px solid #a7f3d0;border-radius:8px;padding:8px 12px;font-size:12px;color:#10B981;margin-top:7px;display:none}
+.modal-suc.on{display:block}
+
+/* ── FAB ── */
+.fab{position:fixed;bottom:calc(max(env(safe-area-inset-bottom,16px),16px) + 16px);right:18px;width:54px;height:54px;border-radius:50%;background:linear-gradient(135deg,#1a1a2e,#0f3460);color:white;border:none;font-size:26px;cursor:pointer;box-shadow:0 4px 16px rgba(15,52,96,.4);display:flex;align-items:center;justify-content:center;z-index:50}
+
+/* ── TOAST ── */
+.toast{position:fixed;top:max(calc(env(safe-area-inset-top,20px) + 8px),28px);left:50%;transform:translateX(-50%) translateY(-60px);background:#1a1a2e;color:white;padding:8px 16px;border-radius:16px;font-size:12px;font-weight:600;z-index:9999;transition:transform .25s;white-space:nowrap;pointer-events:none}
+.toast.on{transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+
+<!-- ═══════ LOGIN SCREEN ═══════ -->
+<div id="loginScreen" class="screen active">
+  <div class="auth-card">
+    <div class="auth-logo">🔐</div>
+    <div class="auth-title">Investment Vault</div>
+    <div class="auth-sub">Your Private Portfolio</div>
+    <label class="fl">Username</label>
+    <div class="fi-wrap">
+      <input class="fi" id="lu" type="text" placeholder="Enter username" autocapitalize="none" autocomplete="username">
+    </div>
+    <label class="fl">Password</label>
+    <div class="fi-wrap">
+      <input class="fi" id="lp" type="password" placeholder="Enter password" autocomplete="current-password">
+      <button class="fi-eye" onclick="eye('lp',this)">👁️</button>
+    </div>
+    <button class="auth-btn" onclick="doLogin()">🔓 Unlock Vault</button>
+    <div class="auth-err" id="lerr"></div>
+    <a class="auth-link" onclick="go('setupScreen')">🆕 First time? Create your login here</a>
+  </div>
+</div>
+
+<!-- ═══════ SETUP SCREEN ═══════ -->
+<div id="setupScreen" class="screen">
+  <div class="auth-card" style="margin:24px auto;max-width:340px;width:calc(100% - 32px)">
+    <div class="auth-logo">🛡️</div>
+    <div class="auth-title">Create Login</div>
+    <div class="auth-sub">One time setup</div>
+    <div class="warn-strip">⚠️ <strong>Remember your password.</strong> Your data is encrypted with it. If forgotten, data cannot be recovered.</div>
+    <label class="fl">Choose Username</label>
+    <div class="fi-wrap" style="margin-bottom:2px">
+      <input class="fi" id="su" type="text" placeholder="Min 3 characters" autocapitalize="none">
+    </div>
+    <label class="fl">Choose Password</label>
+    <div class="fi-wrap" style="margin-bottom:2px">
+      <input class="fi" id="sp" type="password" placeholder="Min 6 characters" oninput="pwStr(this.value)">
+      <button class="fi-eye" onclick="eye('sp',this)">👁️</button>
+    </div>
+    <div class="pw-bar" id="pwbar"></div>
+    <div class="pw-lbl" id="pwlbl" style="color:#aaa"></div>
+    <label class="fl">Confirm Password</label>
+    <div class="fi-wrap">
+      <input class="fi" id="sp2" type="password" placeholder="Repeat password">
+      <button class="fi-eye" onclick="eye('sp2',this)">👁️</button>
+    </div>
+    <div class="auth-err" id="serr"></div>
+    <button class="auth-btn" onclick="doSetup()">✅ Create Login</button>
+    <a class="auth-link" onclick="go('loginScreen')" style="color:rgba(255,255,255,.4);font-size:12px">← Back to Login</a>
+  </div>
+</div>
+
+<!-- ═══════ APP SCREEN ═══════ -->
+<div id="appScreen" class="screen">
+
+  <!-- Header -->
+  <div class="hdr">
+    <div class="hdr-top">
+      <div>
+        <div class="hdr-lbl">Personal</div>
+        <div class="hdr-name">Investment Vault</div>
+      </div>
+      <div class="hdr-btns">
+        <button class="hb" onclick="doSync()">☁️ Sync</button>
+        <button class="hb" onclick="doExcel()">📊 Excel</button>
+        <button class="hb" onclick="doPDF()">📄 PDF</button>
+        <button class="hb" onclick="doLock()">🔒</button>
+      </div>
+    </div>
+    <div class="stats-row">
+      <div class="stat"><div class="stat-l">Invested</div><div class="stat-v" id="hInv">₹0</div></div>
+      <div class="stat"><div class="stat-l">Current</div><div class="stat-v" id="hCur">₹0</div></div>
+      <div class="stat"><div class="stat-l">Gain/Loss</div><div class="stat-v" id="hGain">₹0</div></div>
+    </div>
+    <div class="ret-row" id="hRet">Overall Return: 0%</div>
+    <div class="sync-row">
+      <div class="sync-lbl" id="syncLbl">☁️ Ready to sync</div>
+      <button class="sync-act" onclick="doSync()">↻ Sync Now</button>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab on" id="tDash" onclick="tab('Dash')">📊 Dashboard</button>
+    <button class="tab" id="tInv" onclick="tab('Inv')">💼 Investments</button>
+    <button class="tab" id="tExp" onclick="tab('Exp')">📤 Export</button>
+    <button class="tab" id="tSec" onclick="tab('Sec')">🔐 Security</button>
+  </div>
+
+  <!-- Content -->
+  <div class="body">
+    <div id="vDash"></div>
+    <div id="vInv" style="display:none"></div>
+    <div id="vExp" style="display:none"></div>
+    <div id="vSec" style="display:none"></div>
+  </div>
+
+  <button class="fab" onclick="openForm()">+</button>
+</div>
+
+<!-- Investment Form Modal -->
+<div class="modal-bg" id="fModal" onclick="bgTap(event,'fModal')">
+  <div class="modal-box">
+    <div class="modal-handle"></div>
+    <div class="modal-t" id="fTitle">➕ New Investment</div>
+    <label class="ml">Investment Name *</label>
+    <input class="mi" id="fName" type="text" placeholder="e.g. HDFC Mid Cap Fund">
+    <label class="ml">Category *</label>
+    <div class="cat-grid" id="catGrid"></div>
+    <label class="ml">Invested Amount (₹) *</label>
+    <input class="mi" id="fInv" type="number" inputmode="decimal" placeholder="e.g. 50000">
+    <label class="ml">Current Value (₹)</label>
+    <input class="mi" id="fCur" type="number" inputmode="decimal" placeholder="Leave blank if same as invested">
+    <label class="ml">Date</label>
+    <input class="mi" id="fDate" type="date">
+    <label class="ml">Notes (optional)</label>
+    <input class="mi" id="fNotes" type="text" placeholder="Any notes...">
+    <div class="modal-btns">
+      <button class="m-cancel" onclick="closeMod('fModal')">Cancel</button>
+      <button class="m-save" onclick="saveInv()">💾 Save & Sync</button>
+    </div>
+  </div>
+</div>
+
+<!-- Change Password Modal -->
+<div class="modal-bg" id="cpModal" onclick="bgTap(event,'cpModal')">
+  <div class="modal-box">
+    <div class="modal-handle"></div>
+    <div class="modal-t">🔑 Change Password</div>
+    <label class="ml">Current Password</label>
+    <div class="mi-wrap"><input class="mi" id="cpOld" type="password" placeholder="Current password"><button class="mi-eye" onclick="eye('cpOld',this)">👁️</button></div>
+    <label class="ml" style="margin-top:4px">New Password</label>
+    <div class="mi-wrap"><input class="mi" id="cpNew" type="password" placeholder="Min 6 characters"><button class="mi-eye" onclick="eye('cpNew',this)">👁️</button></div>
+    <label class="ml" style="margin-top:4px">Confirm New Password</label>
+    <div class="mi-wrap"><input class="mi" id="cpNew2" type="password" placeholder="Repeat new password"><button class="mi-eye" onclick="eye('cpNew2',this)">👁️</button></div>
+    <div class="modal-err" id="cperr"></div>
+    <div class="modal-suc" id="cpsuc">✅ Password changed successfully!</div>
+    <div class="modal-btns">
+      <button class="m-cancel" onclick="closeMod('cpModal')">Cancel</button>
+      <button class="m-save" onclick="doChgPass()">Change Password</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- Sync PIN Setup Modal -->
+<div class="modal-bg" id="pinModal">
+  <div class="modal-box">
+    <div class="modal-handle"></div>
+    <div class="modal-t">🔑 Enter Your Sync PIN</div>
+    <p style="font-size:13px;color:#888;margin-bottom:16px;line-height:1.6">Enter the secret Sync PIN you set in your Google Apps Script. This PIN is <strong>never stored in the app code</strong> — only encrypted on your device.</p>
+    <label class="ml">Sync PIN</label>
+    <div class="mi-wrap">
+      <input class="mi" id="pinInput" type="password" placeholder="Enter your Apps Script PIN">
+      <button class="mi-eye" onclick="eye('pinInput',this)">👁️</button>
+    </div>
+    <div class="modal-err" id="pinErr"></div>
+    <div style="background:#FFFBEB;border:1px solid #fde68a;border-radius:8px;padding:10px 12px;font-size:11px;color:#92400e;margin-top:10px;line-height:1.6">
+      💡 This is the PIN you will set in Apps Script by replacing <strong>REPLACE_THIS_WITH_YOUR_PIN</strong>
+    </div>
+    <div class="modal-btns">
+      <button class="m-save" onclick="savePIN()" style="flex:1">✅ Confirm PIN</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════
+//  CONFIG — YOUR DETAILS EMBEDDED HERE
+// ═══════════════════════════════════════
+const GSCRIPT = "https://script.google.com/macros/s/AKfycbzSNW0v_LvHbr17LChEkWU45L6USZ574s20JaSOWzwwr-mN33YcOe0H0zuWrX42CayB8Q/exec";
+// ⚠️ GTOKEN is NOT stored here — user enters it once after login
+const K_META  = "ivm4";
+const K_DATA  = "ivd4";
+const K_PIN   = "ivp4"; // stores encrypted sync PIN on device
+
+// ═══════════════════════════════════════
+//  ENCRYPTION (works everywhere)
+// ═══════════════════════════════════════
+function xkey(pw, len) {
+  const s = pw + pw.split("").reverse().join("") + pw.length;
+  const k = [];
+  let h = 0;
+  for (let i = 0; i < len; i++) {
+    h = (h * 31 + s.charCodeAt(i % s.length)) >>> 0;
+    k.push(h & 0xFF);
+  }
+  return k;
+}
+
+function enc(txt, pw) {
+  const b = Array.from(unescape(encodeURIComponent(txt))).map(c => c.charCodeAt(0));
+  const k = xkey(pw, b.length);
+  return btoa(b.map((x, i) => x ^ k[i]).map(x => String.fromCharCode(x)).join(""));
+}
+
+function dec(b64, pw) {
+  const b = Array.from(atob(b64)).map(c => c.charCodeAt(0));
+  const k = xkey(pw, b.length);
+  return decodeURIComponent(escape(b.map((x, i) => x ^ k[i]).map(x => String.fromCharCode(x)).join("")));
+}
+
+function hashpw(pw) {
+  let a = 0x6d2b79f5, b2 = 0;
+  const s = pw + "ivs" + pw.length;
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    a = Math.imul(a ^ c, 2246822519); a ^= a >>> 13;
+    b2 = Math.imul(b2 ^ c, 3266489917); b2 ^= b2 >>> 16;
+  }
+  // Second pass
+  for (let i = s.length - 1; i >= 0; i--) {
+    a = Math.imul(a ^ s.charCodeAt(i), 374761393); a = (a << 13) | (a >>> 19);
+    b2 = Math.imul(b2 ^ s.charCodeAt(i), 1274126177); b2 ^= b2 >>> 15;
+  }
+  return ((a ^ b2) >>> 0).toString(16).padStart(8,"0") +
+         ((a ^ (b2 << 3)) >>> 0).toString(16).padStart(8,"0") +
+         ((b2 ^ (a >> 5)) >>> 0).toString(16).padStart(8,"0");
+}
+
+function hashu(u) {
+  let h = 0;
+  for (let i = 0; i < u.length; i++) h = (Math.imul(31, h) + u.charCodeAt(i)) >>> 0;
+  return h.toString(16) + u.length;
+}
+
+// ═══════════════════════════════════════
+//  LOCAL STORAGE (safe wrapper)
+// ═══════════════════════════════════════
+function lsGet(k) { try { return localStorage.getItem(k); } catch(e) { return null; } }
+function lsSet(k, v) { try { localStorage.setItem(k, v); return true; } catch(e) { return false; } }
+
+// ═══════════════════════════════════════
+//  GOOGLE SHEETS
+// ═══════════════════════════════════════
+async function gRead() {
+  if (!sessPIN) throw new Error("NO_PIN");
+  const r = await fetch(GSCRIPT + "?action=read&token=" + encodeURIComponent(sessPIN) + "&_=" + Date.now(), {mode:"cors"});
+  const j = await r.json();
+  if (j.status === "unauthorized") throw new Error("WRONG_PIN");
+  if (j.status !== "ok") throw new Error(j.msg);
+  return j.data || "";
+}
+
+async function gWrite(data) {
+  if (!sessPIN) throw new Error("NO_PIN");
+  const r = await fetch(GSCRIPT, {
+    method:"POST", mode:"cors",
+    headers:{"Content-Type":"text/plain"},
+    body: JSON.stringify({action:"write", token:sessPIN, data})
+  });
+  const j = await r.json();
+  if (j.status === "unauthorized") throw new Error("WRONG_PIN");
+  if (j.status !== "ok") throw new Error(j.msg);
+}
+
+// ═══════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════
+const CATS = [
+  {id:"savings",label:"Bank Savings",icon:"🏦",col:"#3B82F6",bg:"#EFF6FF"},
+  {id:"mf",     label:"Mutual Funds",icon:"📈",col:"#8B5CF6",bg:"#F5F3FF"},
+  {id:"ppf",    label:"PPF",         icon:"🛡️",col:"#10B981",bg:"#ECFDF5"},
+  {id:"stocks", label:"Stocks",      icon:"📊",col:"#F59E0B",bg:"#FFFBEB"},
+  {id:"pf",     label:"Company PF",  icon:"🏢",col:"#EF4444",bg:"#FEF2F2"},
+];
+
+let DATA = [], editId = null, pickCat = "mf", curTab = "Dash", filterCat = "all";
+let sessPass = "", sessPIN = "", lastSync = null, fails = 0, lockTil = 0;
+
+const fmt  = n => new Intl.NumberFormat("en-IN",{style:"currency",currency:"INR",maximumFractionDigits:0}).format(n||0);
+const fmtN = n => new Intl.NumberFormat("en-IN",{maximumFractionDigits:0}).format(n||0);
+const pct  = (a,b) => (!a||!b) ? "0.0" : (((b-a)/a)*100).toFixed(1);
+const gc   = id => CATS.find(c=>c.id===id) || CATS[0];
+
+// ═══════════════════════════════════════
+//  NAVIGATION
+// ═══════════════════════════════════════
+function go(id) {
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+  window.scrollTo(0,0);
+}
+
+// ═══════════════════════════════════════
+//  AUTH
+// ═══════════════════════════════════════
+function pwStr(p) {
+  let s = 0;
+  if(p.length>=6)s++; if(p.length>=10)s++; if(/[A-Z]/.test(p))s++;
+  if(/[0-9]/.test(p))s++; if(/[^A-Za-z0-9]/.test(p))s++;
+  const L = [{c:"#ef4444",l:"Weak"},{c:"#f97316",l:"Fair"},{c:"#eab308",l:"Good"},{c:"#84cc16",l:"Strong"},{c:"#22c55e",l:"Very Strong"}];
+  const v = L[Math.max(0,s-1)];
+  const pct2 = p.length ? ((s/5)*100)+"%" : "0%";
+  document.getElementById("pwbar").style.cssText = `background:${v.c};width:${pct2};height:3px;border-radius:2px;transition:all .3s`;
+  document.getElementById("pwlbl").textContent = p.length ? v.l : "";
+  document.getElementById("pwlbl").style.color = v.c;
+}
+
+function doSetup() {
+  const u  = (document.getElementById("su").value||"").trim();
+  const p  = document.getElementById("sp").value  || "";
+  const p2 = document.getElementById("sp2").value || "";
+  const err = document.getElementById("serr");
+  err.className = "auth-err";
+
+  if (u.length < 3)  { err.textContent = "Username must be at least 3 characters"; err.className = "auth-err on"; return; }
+  if (p.length < 6)  { err.textContent = "Password must be at least 6 characters"; err.className = "auth-err on"; return; }
+  if (p !== p2)      { err.textContent = "Passwords do not match"; err.className = "auth-err on"; return; }
+
+  // Store hashed credentials
+  const saved = lsSet(K_META, JSON.stringify({ u: hashu(u.toLowerCase()), p: hashpw(p) }));
+  if (!saved) { err.textContent = "Storage error — try a different browser"; err.className = "auth-err on"; return; }
+
+  // Store empty encrypted data locally
+  lsSet(K_DATA, enc("[]", p));
+
+  // PIN not set yet — sheet sync happens after PIN entry
+  // Data saved locally for now
+
+  // Clear fields
+  ["su","sp","sp2"].forEach(id => document.getElementById(id).value = "");
+
+  toast("✅ Login created! Now sign in.");
+  go("loginScreen");
+}
+
+function doLogin() {
+  if (Date.now() < lockTil) {
+    showAuthErr("lerr", `⏳ Too many attempts. Wait ${Math.ceil((lockTil-Date.now())/1000)}s.`);
+    return;
+  }
+
+  const u = (document.getElementById("lu").value||"").trim();
+  const p = document.getElementById("lp").value || "";
+
+  if (!u) { showAuthErr("lerr","⚠️ Please enter your username"); return; }
+  if (!p) { showAuthErr("lerr","⚠️ Please enter your password"); return; }
+
+  const raw = lsGet(K_META);
+  if (!raw) {
+    showAuthErr("lerr","⚠️ No account found. Tap 'Create your login' below.");
+    return;
+  }
+
+  let meta;
+  try { meta = JSON.parse(raw); } catch(e) { showAuthErr("lerr","⚠️ Corrupted data. Please create login again."); return; }
+
+  const uMatch = hashu(u.toLowerCase()) === meta.u;
+  const pMatch = hashpw(p) === meta.p;
+
+  if (!uMatch || !pMatch) {
+    fails++;
+    if (fails >= 5) { lockTil = Date.now() + 30000; fails = 0; }
+    const hint = fails > 0 ? ` (${5-fails} tries left)` : " (locked 30s)";
+    showAuthErr("lerr", "❌ Wrong username or password" + hint);
+    document.getElementById("lp").value = "";
+    return;
+  }
+
+  // ✅ Credentials correct
+  fails = 0;
+  sessPass = p;
+  document.getElementById("lerr").className = "auth-err";
+  document.getElementById("lp").value = "";
+  document.getElementById("lu").value = "";
+
+  // Load data from local cache first (instant, no network needed)
+  const cached = lsGet(K_DATA);
+  if (cached) {
+    try { DATA = JSON.parse(dec(cached, p)); } catch(e) { DATA = []; }
+  } else { DATA = []; }
+
+  // Load saved PIN from device (if previously set)
+  const savedPIN = lsGet(K_PIN);
+  if (savedPIN) {
+    try { sessPIN = dec(savedPIN, p); } catch(e) { sessPIN = ""; }
+  }
+
+  go("appScreen");
+  render();
+
+  if (!sessPIN) {
+    // First time — ask for PIN
+    setSyncLbl("⚠️ Enter Sync PIN to enable cloud sync");
+    setTimeout(() => openPINSetup(), 800);
+  } else {
+    setSyncLbl("☁️ Loaded — syncing...");
+    resetIdle();
+    syncInBackground(p);
+  }
+  resetIdle();
+}
+
+async function syncInBackground(p) {
+  try {
+    const cloud = await gRead();
+    if (cloud && cloud !== lsGet(K_DATA)) {
+      const plain = dec(cloud, p);
+      const parsed = JSON.parse(plain);
+      DATA = parsed;
+      lsSet(K_DATA, cloud);
+      lastSync = new Date();
+      render();
+      setSyncLbl("✅ Synced " + lastSync.toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"}));
+    }
+  } catch(e) {
+    setSyncLbl("📴 Offline — showing local data");
+  }
+}
+
+function doLock() {
+  sessPass = ""; sessPIN = ""; DATA = [];
+  go("loginScreen");
+}
+
+async function doSync() {
+  if (!sessPass) return;
+  setSyncLbl("⏳ Syncing...");
+  try {
+    const cloud = await gRead();
+    if (cloud) {
+      const plain = dec(cloud, sessPass);
+      DATA = JSON.parse(plain);
+      lsSet(K_DATA, cloud);
+    } else {
+      await gWrite(lsGet(K_DATA) || enc("[]", sessPass));
+    }
+    lastSync = new Date();
+    render();
+    toast("✅ Synced!");
+    setSyncLbl("✅ Synced " + lastSync.toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"}));
+  } catch(e) {
+    toast("❌ Sync failed — check internet");
+    setSyncLbl("❌ Sync failed");
+  }
+}
+
+async function saveData() {
+  const encrypted = enc(JSON.stringify(DATA), sessPass);
+  lsSet(K_DATA, encrypted);
+  try { await gWrite(encrypted); lastSync = new Date(); setSyncLbl("✅ Synced " + lastSync.toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"})); }
+  catch(e) { setSyncLbl("⚠️ Saved locally — sync when online"); }
+}
+
+async function doChgPass() {
+  const old = document.getElementById("cpOld").value;
+  const nw  = document.getElementById("cpNew").value;
+  const nw2 = document.getElementById("cpNew2").value;
+  const err = document.getElementById("cperr"), suc = document.getElementById("cpsuc");
+  err.className = "modal-err"; suc.className = "modal-suc";
+  if(!old||!nw||!nw2) { err.textContent="All fields required"; err.className="modal-err on"; return; }
+  if(nw.length<6) { err.textContent="Min 6 characters"; err.className="modal-err on"; return; }
+  if(nw!==nw2) { err.textContent="Passwords do not match"; err.className="modal-err on"; return; }
+  const meta = JSON.parse(lsGet(K_META)||"{}");
+  if(hashpw(old)!==meta.p) { err.textContent="Current password is incorrect"; err.className="modal-err on"; return; }
+  meta.p = hashpw(nw); lsSet(K_META, JSON.stringify(meta));
+  const encrypted = enc(JSON.stringify(DATA), nw);
+  lsSet(K_DATA, encrypted); sessPass = nw;
+  try { await gWrite(encrypted); } catch(e) {}
+  suc.className = "modal-suc on";
+  setTimeout(()=>closeMod("cpModal"), 2000);
+}
+
+// Idle lock 5 min
+let idleT;
+function resetIdle() {
+  clearTimeout(idleT);
+  idleT = setTimeout(()=>{ if(document.getElementById("appScreen").classList.contains("active")){ doLock(); toast("🔒 Auto-locked"); }}, 5*60*1000);
+}
+["touchstart","click"].forEach(e=>document.addEventListener(e, resetIdle));
+document.addEventListener("keydown", e => {
+  resetIdle();
+  if (e.key==="Enter") {
+    const a = document.querySelector(".screen.active");
+    if (a && a.id==="loginScreen") doLogin();
+    else if (a && a.id==="setupScreen") doSetup();
+    else if (document.getElementById("fModal").classList.contains("open")) saveInv();
+  }
+});
+
+function eye(id, btn) {
+  const el = document.getElementById(id);
+  el.type = el.type==="password" ? "text" : "password";
+  btn.textContent = el.type==="password" ? "👁️" : "🙈";
+}
+
+function showAuthErr(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = msg; el.className = el.className.replace(" on","") + " on";
+}
+
+function setSyncLbl(t) { document.getElementById("syncLbl").textContent = t; }
+
+// ═══════════════════════════════════════
+//  TABS + RENDER
+// ═══════════════════════════════════════
+function tab(name) {
+  curTab = name;
+  ["Dash","Inv","Exp","Sec"].forEach(t => {
+    document.getElementById("v"+t).style.display = t===name?"":"none";
+    document.getElementById("t"+t).classList.toggle("on", t===name);
+  });
+  render();
+}
+
+function render() {
+  renderHdr();
+  if(curTab==="Dash") renderDash();
+  else if(curTab==="Inv") renderInv();
+  else if(curTab==="Exp") renderExp();
+  else if(curTab==="Sec") renderSec();
+}
+
+function renderHdr() {
+  const ti=DATA.reduce((s,i)=>s+Number(i.inv||0),0);
+  const tc=DATA.reduce((s,i)=>s+Number(i.cur||i.inv||0),0);
+  const tg=tc-ti;
+  document.getElementById("hInv").textContent=fmt(ti);
+  document.getElementById("hCur").textContent=fmt(tc);
+  const el=document.getElementById("hGain"); el.textContent=fmt(tg); el.style.color=tg>=0?"#4ade80":"#f87171";
+  document.getElementById("hRet").innerHTML=`Overall Return: <span style="color:${Number(pct(ti,tc))>=0?'#4ade80':'#f87171'};font-weight:700">${pct(ti,tc)}%</span>`;
+}
+
+function renderDash() {
+  const tc=DATA.reduce((s,i)=>s+Number(i.cur||i.inv||0),0);
+  let h = "";
+  CATS.forEach(c=>{
+    const items=DATA.filter(i=>i.cat===c.id);
+    const iv=items.reduce((s,i)=>s+Number(i.inv||0),0);
+    const cv=items.reduce((s,i)=>s+Number(i.cur||i.inv||0),0);
+    const g=pct(iv,cv), sh=tc>0?((cv/tc)*100).toFixed(1):0;
+    h+=`<div class="cat-card" style="border-left:4px solid ${c.col}">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="display:flex;align-items:center">
+          <div style="width:38px;height:38px;border-radius:9px;background:${c.bg};display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${c.icon}</div>
+          <div style="margin-left:9px">
+            <div style="font-weight:700;font-size:13px">${c.label}</div>
+            <div style="font-size:10px;color:#bbb;margin-top:1px">${items.length} item${items.length!==1?"s":""}</div>
+          </div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-weight:700;font-size:14px">${fmt(cv)}</div>
+          <div style="font-size:10px;font-weight:600;color:${Number(g)>=0?"#10B981":"#EF4444"}">${g}% ${Number(g)>=0?"▲":"▼"}</div>
+        </div>
+      </div>
+      <div class="prog-wrap"><div class="prog-bar" style="width:${sh}%;background:${c.col}"></div></div>
+      <div style="font-size:9px;color:#ccc;margin-top:2px">${sh}% of portfolio</div>
+    </div>`;
+  });
+  if(!DATA.length) h=`<div class="empty"><div class="empty-ico">💰</div><div class="empty-t">No investments yet</div><div style="font-size:12px">Tap + to add</div></div>`;
+  document.getElementById("vDash").innerHTML=h;
+}
+
+function renderInv() {
+  const filtered=filterCat==="all"?DATA:DATA.filter(i=>i.cat===filterCat);
+  let pills=`<div class="pills">`;
+  [{id:"all",label:"All",icon:"🗂️"},...CATS].forEach(c=>{
+    const a=filterCat===c.id;
+    pills+=`<button class="pill" style="background:${a?"#0f3460":"#E5E5EA"};color:${a?"white":"#555"};font-weight:${a?700:400}" onclick="setFilter('${c.id}')">${c.icon} ${c.label}</button>`;
+  });
+  pills+=`</div>`;
+  let cards="";
+  if(!filtered.length) cards=`<div class="empty"><div class="empty-ico">📭</div><div class="empty-t">Nothing here</div></div>`;
+  else filtered.forEach(item=>{
+    const c=gc(item.cat);
+    const iv=Number(item.inv||0),cv=Number(item.cur||item.inv||0),gn=cv-iv,gp=pct(iv,cv);
+    cards+=`<div class="inv-card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="width:36px;height:36px;border-radius:9px;background:${c.bg};display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0">${c.icon}</div>
+          <div>
+            <div style="font-weight:700;font-size:13px">${item.name}</div>
+            <div style="font-size:10px;font-weight:600;color:${c.col}">${c.label}</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:5px">
+          <button style="border:none;border-radius:6px;padding:5px 8px;cursor:pointer;font-size:12px;background:#F2F2F7" onclick="editInv('${item.id}')">✏️</button>
+          <button style="border:none;border-radius:6px;padding:5px 8px;cursor:pointer;font-size:12px;background:#FEF2F2" onclick="delInv('${item.id}')">🗑️</button>
+        </div>
+      </div>
+      <div class="inv-grid">
+        <div class="inv-cell"><div class="ic-l">Invested</div><div class="ic-v">${fmt(iv)}</div></div>
+        <div class="inv-cell"><div class="ic-l">Current</div><div class="ic-v">${fmt(cv)}</div></div>
+        <div class="inv-cell"><div class="ic-l">Gain/Loss</div><div class="ic-v" style="color:${gn>=0?"#10B981":"#EF4444"}">${fmt(gn)}</div></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+        <div style="font-size:10px;color:#ccc">📅 ${item.date||"-"}</div>
+        <div style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:14px;color:${Number(gp)>=0?"#10B981":"#EF4444"};background:${Number(gp)>=0?"#ECFDF5":"#FEF2F2"}">${gp}% ${Number(gp)>=0?"▲":"▼"}</div>
+      </div>
+      ${item.notes?`<div style="font-size:10px;color:#bbb;font-style:italic;margin-top:6px">📝 ${item.notes}</div>`:""}
+    </div>`;
+  });
+  document.getElementById("vInv").innerHTML=pills+cards;
+}
+
+function renderExp() {
+  const tc=DATA.reduce((s,i)=>s+Number(i.cur||i.inv||0),0);
+  document.getElementById("vExp").innerHTML=`
+    <div class="panel">
+      <div class="panel-t">📤 Export & Share</div>
+      <div class="panel-s">${DATA.length} investment${DATA.length!==1?"s":""} · Current value: ${fmt(tc)}</div>
+      <div class="exp-grid">
+        <button class="exp-btn" style="border:2px solid #10B981;background:#ECFDF5" onclick="doExcel()">
+          <div class="exp-ico">📊</div><div class="exp-n" style="color:#10B981">Excel (.xlsx)</div>
+          <div class="exp-d">Download spreadsheet — open in Google Sheets</div>
+        </button>
+        <button class="exp-btn" style="border:2px solid #EF4444;background:#FEF2F2" onclick="doPDF()">
+          <div class="exp-ico">📄</div><div class="exp-n" style="color:#EF4444">PDF Report</div>
+          <div class="exp-d">Share on WhatsApp or email</div>
+        </button>
+      </div>
+    </div>`;
+}
+
+function renderSec() {
+  document.getElementById("vSec").innerHTML=`
+    <div class="enc-badge">🛡️ <strong>Encrypted + Google Sheets Sync Active</strong><br>Data is encrypted on your device before saving. Google only sees scrambled text — unreadable without your password.</div>
+    <div class="panel">
+      <div class="panel-t">🔐 Settings</div>
+      <div class="sec-row"><div><div class="sec-rl">Change Password</div><div class="sec-rs">Re-encrypts and re-syncs all data</div></div><button class="sec-ab" onclick="openMod('cpModal')">Change</button></div>
+      <div class="sec-row"><div><div class="sec-rl">Force Sync</div><div class="sec-rs">Push/pull latest data from Google Sheets</div></div><button class="sec-ab" onclick="doSync()">☁️ Sync</button></div>
+      <div class="sec-row"><div><div class="sec-rl">Reset Sync PIN</div><div class="sec-rs">Change your Apps Script sync PIN</div></div><button class="sec-ab" onclick="resetSyncPIN()">Reset</button></div>
+      <div class="sec-row"><div><div class="sec-rl">Lock App</div><div class="sec-rs">Return to login screen</div></div><button class="sec-ab" onclick="doLock()">🔒 Lock</button></div>
+    </div>
+    <div class="panel">
+      <div class="panel-t">✅ Security Active</div>
+      ${[
+        ["Password Encryption","Data scrambled — unreadable without password"],
+        ["Google Sheets Backup","Encrypted data stored in your Google Drive"],
+        ["Auto Lock","Locks after 5 min of inactivity"],
+        ["Brute Force Block","30s lockout after 5 wrong attempts"],
+        ["Offline Support","Works without internet using local cache"],
+      ].map(([t,s])=>`<div class="sec-row"><div><div class="sec-rl">${t}</div><div class="sec-rs">${s}</div></div><span style="color:#10B981;font-weight:700;font-size:13px">✅</span></div>`).join("")}
+    </div>`;
+}
+
+// ═══════════════════════════════════════
+//  EXCEL + PDF
+// ═══════════════════════════════════════
+function doExcel() {
+  if(!DATA.length){toast("⚠️ No investments to export");return;}
+  const ti=DATA.reduce((s,i)=>s+Number(i.inv||0),0);
+  const tc=DATA.reduce((s,i)=>s+Number(i.cur||i.inv||0),0),tg=tc-ti;
+  const wb=XLSX.utils.book_new();
+  const rows=[["INVESTMENT VAULT REPORT"],["Generated:",new Date().toLocaleDateString("en-IN",{day:"2-digit",month:"long",year:"numeric"})],[],["SUMMARY"],["Invested (₹)",ti],["Current (₹)",tc],["Gain/Loss (₹)",tg],["Return (%)",Number(pct(ti,tc))],[],["ALL INVESTMENTS"],["#","Name","Category","Invested","Current","Gain/Loss","Return %","Date","Notes"]];
+  DATA.forEach((item,i)=>{const c=gc(item.cat);const iv=Number(item.inv||0),cv=Number(item.cur||item.inv||0);rows.push([i+1,item.name,c.label,iv,cv,cv-iv,Number(pct(iv,cv)),item.date||"",item.notes||""]);});
+  rows.push(["","TOTAL","",ti,tc,tg,Number(pct(ti,tc)),"",""]);
+  const ws1=XLSX.utils.aoa_to_sheet(rows);
+  ws1["!cols"]=[{wch:4},{wch:26},{wch:14},{wch:13},{wch:13},{wch:13},{wch:10},{wch:12},{wch:20}];
+  XLSX.utils.book_append_sheet(wb,ws1,"Investments");
+  const cr=[["CATEGORY SUMMARY"],[],["Category","Count","Invested","Current","Gain/Loss","Return %","Portfolio %"]];
+  CATS.forEach(c=>{const items=DATA.filter(i=>i.cat===c.id);const iv=items.reduce((s,i)=>s+Number(i.inv||0),0);const cv=items.reduce((s,i)=>s+Number(i.cur||i.inv||0),0);cr.push([c.label,items.length,iv,cv,cv-iv,Number(pct(iv,cv)),tc>0?Number(((cv/tc)*100).toFixed(1)):0]);});
+  const ws2=XLSX.utils.aoa_to_sheet(cr);
+  ws2["!cols"]=[{wch:16},{wch:7},{wch:13},{wch:13},{wch:13},{wch:10},{wch:12}];
+  XLSX.utils.book_append_sheet(wb,ws2,"Category Summary");
+  XLSX.writeFile(wb,`Investment_Portfolio_${new Date().toISOString().split("T")[0]}.xlsx`);
+  toast("✅ Excel downloaded!");
+}
+
+function doPDF() {
+  if(!DATA.length){toast("⚠️ No data to export");return;}
+  const ti=DATA.reduce((s,i)=>s+Number(i.inv||0),0);
+  const tc=DATA.reduce((s,i)=>s+Number(i.cur||i.inv||0),0),tg=tc-ti,gp=pct(ti,tc);
+  const date=new Date().toLocaleDateString("en-IN",{day:"2-digit",month:"long",year:"numeric"});
+  let cR="";
+  CATS.forEach(c=>{const items=DATA.filter(i=>i.cat===c.id);if(!items.length)return;const iv=items.reduce((s,i)=>s+Number(i.inv||0),0);const cv=items.reduce((s,i)=>s+Number(i.cur||i.inv||0),0);const g=cv-iv,gp2=pct(iv,cv);cR+=`<tr><td>${c.icon} ${c.label}</td><td>${items.length}</td><td>₹${fmtN(iv)}</td><td>₹${fmtN(cv)}</td><td style="color:${g>=0?"#10B981":"#EF4444"}">₹${fmtN(g)}</td><td style="color:${Number(gp2)>=0?"#10B981":"#EF4444"}">${gp2}%</td></tr>`;});
+  let iR="";
+  DATA.forEach((item,idx)=>{const c=gc(item.cat);const iv=Number(item.inv||0),cv=Number(item.cur||item.inv||0),gn=cv-iv,gp3=pct(iv,cv);iR+=`<tr><td>${idx+1}</td><td><strong>${item.name}</strong><br><small style="color:${c.col}">${c.icon} ${c.label}</small></td><td>₹${fmtN(iv)}</td><td>₹${fmtN(cv)}</td><td style="color:${gn>=0?"#10B981":"#EF4444"}">₹${fmtN(gn)}</td><td style="color:${Number(gp3)>=0?"#10B981":"#EF4444"}">${gp3}%</td><td>${item.date||"-"}</td></tr>`;});
+  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Investment Report</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;color:#1a1a2e;padding:22px;font-size:12px}.hdr{background:linear-gradient(135deg,#1a1a2e,#0f3460);color:white;padding:18px 22px;border-radius:10px;margin-bottom:18px}.hdr h1{font-size:18px;font-weight:700;margin-bottom:3px}.hdr p{opacity:.6;font-size:11px}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:18px}.card{background:#F8F9FA;border-radius:7px;padding:11px;border-left:4px solid #0f3460}.card .l{font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.8px;margin-bottom:3px}.card .v{font-size:13px;font-weight:700}h2{font-size:12px;font-weight:700;margin-bottom:8px;padding-bottom:5px;border-bottom:2px solid #F2F2F7}table{width:100%;border-collapse:collapse;margin-bottom:18px;font-size:11px}th{background:#1a1a2e;color:white;padding:7px 9px;text-align:left;font-size:9px;text-transform:uppercase}td{padding:7px 9px;border-bottom:1px solid #F2F2F7;vertical-align:middle}tr:nth-child(even)td{background:#FAFAFA}.tf td{background:#F2F2F7!important;font-weight:700}.foot{text-align:center;color:#ccc;font-size:10px;margin-top:14px;padding-top:10px;border-top:1px solid #eee}@media print{@page{margin:10mm}body{padding:0}}</style></head><body>
+  <div class="hdr"><h1>💰 Investment Portfolio Report</h1><p>Generated ${date} · Personal & Confidential</p></div>
+  <div class="grid"><div class="card"><div class="l">Invested</div><div class="v">₹${fmtN(ti)}</div></div><div class="card"><div class="l">Current</div><div class="v">₹${fmtN(tc)}</div></div><div class="card" style="border-left-color:${tg>=0?"#10B981":"#EF4444"}"><div class="l">Gain/Loss</div><div class="v" style="color:${tg>=0?"#10B981":"#EF4444"}">₹${fmtN(tg)}</div></div><div class="card" style="border-left-color:${Number(gp)>=0?"#10B981":"#EF4444"}"><div class="l">Return</div><div class="v" style="color:${Number(gp)>=0?"#10B981":"#EF4444"}">${gp}%</div></div></div>
+  <h2>Category Summary</h2><table><thead><tr><th>Category</th><th>Count</th><th>Invested</th><th>Current</th><th>Gain/Loss</th><th>Return</th></tr></thead><tbody>${cR}</tbody><tfoot><tr class="tf"><td>TOTAL</td><td>${DATA.length}</td><td>₹${fmtN(ti)}</td><td>₹${fmtN(tc)}</td><td style="color:${tg>=0?"#10B981":"#EF4444"}">₹${fmtN(tg)}</td><td style="color:${Number(gp)>=0?"#10B981":"#EF4444"}">${gp}%</td></tr></tfoot></table>
+  <h2>All Investments</h2><table><thead><tr><th>#</th><th>Investment</th><th>Invested</th><th>Current</th><th>Gain/Loss</th><th>Return</th><th>Date</th></tr></thead><tbody>${iR}</tbody><tfoot><tr class="tf"><td colspan="2">TOTAL</td><td>₹${fmtN(ti)}</td><td>₹${fmtN(tc)}</td><td style="color:${tg>=0?"#10B981":"#EF4444"}">₹${fmtN(tg)}</td><td style="color:${Number(gp)>=0?"#10B981":"#EF4444"}">${gp}%</td><td></td></tr></tfoot></table>
+  <div class="foot">Investment Vault · Encrypted · Google Sheets Synced · Indian Rupees (₹)</div></body></html>`;
+  const w=window.open("","_blank"); w.document.write(html); w.document.close();
+  w.onload=()=>setTimeout(()=>{w.focus();w.print();},500);
+  toast("📄 PDF ready!");
+}
+
+// ═══════════════════════════════════════
+//  INVESTMENT FORM
+// ═══════════════════════════════════════
+function setFilter(cat){filterCat=cat;renderInv();}
+
+function buildCatGrid(){
+  const g=document.getElementById("catGrid"); g.innerHTML="";
+  CATS.forEach(c=>{
+    const b=document.createElement("button");
+    b.className="cat-opt"; b.id="copt_"+c.id;
+    b.type="button";
+    b.onclick=()=>selCat(c.id);
+    b.innerHTML=`${c.icon} ${c.label}`;
+    g.appendChild(b);
+  });
+  selCat(pickCat);
+}
+
+function selCat(id){
+  pickCat=id;
+  CATS.forEach(c=>{
+    const b=document.getElementById("copt_"+c.id); if(!b)return;
+    b.style.cssText = c.id===id
+      ? `border-color:${c.col};background:${c.bg};color:${c.col}`
+      : "border-color:#E5E5EA;background:white;color:#555";
+  });
+}
+
+function openMod(id){document.getElementById(id).classList.add("open");}
+function closeMod(id){
+  document.getElementById(id).classList.remove("open");
+  document.querySelectorAll(`#${id} input`).forEach(el=>el.value="");
+  document.querySelectorAll(`#${id} .modal-err`).forEach(el=>el.className="modal-err");
+  document.querySelectorAll(`#${id} .modal-suc`).forEach(el=>el.className="modal-suc");
+}
+function bgTap(e,id){if(e.target.id===id)closeMod(id);}
+
+function openForm(){
+  editId=null; pickCat="mf";
+  document.getElementById("fTitle").textContent="➕ New Investment";
+  ["fName","fInv","fCur","fNotes"].forEach(id=>document.getElementById(id).value="");
+  document.getElementById("fDate").value=new Date().toISOString().split("T")[0];
+  buildCatGrid();
+  openMod("fModal");
+}
+
+function editInv(id){
+  const item=DATA.find(i=>i.id===id); if(!item)return;
+  editId=id; pickCat=item.cat;
+  document.getElementById("fTitle").textContent="✏️ Edit Investment";
+  document.getElementById("fName").value=item.name;
+  document.getElementById("fInv").value=item.inv;
+  document.getElementById("fCur").value=item.cur||"";
+  document.getElementById("fDate").value=item.date||"";
+  document.getElementById("fNotes").value=item.notes||"";
+  buildCatGrid();
+  openMod("fModal");
+}
+
+async function saveInv(){
+  const name=document.getElementById("fName").value.trim();
+  const inv=document.getElementById("fInv").value.trim();
+  if(!name||!inv){toast("⚠️ Name and amount are required");return;}
+  const item={
+    id:editId||Date.now().toString(), name, cat:pickCat,
+    inv:Number(inv),
+    cur:document.getElementById("fCur").value ? Number(document.getElementById("fCur").value) : Number(inv),
+    date:document.getElementById("fDate").value,
+    notes:document.getElementById("fNotes").value.trim()
+  };
+  if(editId) DATA=DATA.map(i=>i.id===editId?item:i);
+  else DATA.push(item);
+  closeMod("fModal");
+  render();
+  toast("💾 Saving...");
+  await saveData();
+  toast("✅ " + (editId?"Updated!":"Added!"));
+}
+
+async function delInv(id){
+  if(!confirm("Delete this investment?"))return;
+  DATA=DATA.filter(i=>i.id!==id);
+  await saveData(); render(); toast("🗑️ Deleted");
+}
+
+
+// ═══════════════════════════════════════
+//  SYNC PIN MANAGEMENT
+// ═══════════════════════════════════════
+function openPINSetup() {
+  document.getElementById("pinInput").value = "";
+  document.getElementById("pinErr").className = "modal-err";
+  openMod("pinModal");
+}
+
+async function savePIN() {
+  const pin = document.getElementById("pinInput").value.trim();
+  const err = document.getElementById("pinErr");
+  err.className = "modal-err";
+  if (!pin || pin.length < 4) {
+    err.textContent = "PIN must be at least 4 characters";
+    err.className = "modal-err on";
+    return;
+  }
+  // Test PIN against Apps Script before saving
+  sessPIN = pin;
+  err.textContent = "⏳ Verifying PIN with Google Sheets...";
+  err.className = "modal-err on";
+  err.style.background = "#EFF6FF";
+  err.style.borderColor = "#bfdbfe";
+  err.style.color = "#1d4ed8";
+  try {
+    await gRead(); // test call
+    // PIN works! Save it encrypted on device
+    lsSet(K_PIN, enc(pin, sessPass));
+    closeMod("pinModal");
+    toast("✅ Sync PIN verified and saved!");
+    setSyncLbl("☁️ Syncing...");
+    syncInBackground(sessPass);
+  } catch(e) {
+    sessPIN = "";
+    err.style.background = "";
+    err.style.borderColor = "";
+    err.style.color = "";
+    if (e.message === "WRONG_PIN") {
+      err.textContent = "❌ Wrong PIN — does not match Apps Script token";
+    } else {
+      err.textContent = "❌ Could not connect — check internet and try again";
+    }
+    err.className = "modal-err on";
+  }
+}
+
+function resetSyncPIN() {
+  if (!confirm("Reset Sync PIN? You will need to re-enter it.")) return;
+  lsSet(K_PIN, "");
+  sessPIN = "";
+  openPINSetup();
+}
+
+function toast(msg){
+  const t=document.getElementById("toast"); t.textContent=msg; t.classList.add("on");
+  setTimeout(()=>t.classList.remove("on"),2800);
+}
+</script>
+</body>
+</html>
